@@ -1,0 +1,7 @@
+# Optional real OCR engine dependencies.
+# Install these only when you want PaddleOCR inference locally.
+paddlepaddle
+paddleocr>=3.0.0
+
+# Optional PDF support:
+# pdf2image

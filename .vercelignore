@@ -1,0 +1,6 @@
+services/ocr-service/.venv
+services/ocr-service/__pycache__
+services/ocr-service/engines/__pycache__
+benchmark-output
+.env
+.env.local

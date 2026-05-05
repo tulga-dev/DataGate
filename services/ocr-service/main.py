@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Any, Callable
 
 from fastapi import FastAPI, File, Form, UploadFile
@@ -16,6 +17,7 @@ from document_pipeline import (
 )
 from engines.glm_ocr import extract_with_glm_ocr
 from engines.mock import extract_with_mock
+from engines.openai_ocr import extract_with_openai_ocr
 from engines.paddleocr import extract_with_paddleocr
 from engines.surya import extract_with_surya
 
@@ -92,9 +94,17 @@ EngineHandler = Callable[[str, bytes], dict]
 ENGINES: dict[str, EngineHandler] = {
     "glm_ocr": extract_with_glm_ocr,
     "mock": extract_with_mock,
+    "openai_ocr": extract_with_openai_ocr,
     "paddleocr": extract_with_paddleocr,
     "surya": extract_with_surya,
 }
+
+
+def default_ocr_engine() -> str:
+    configured = os.getenv("DATAGATE_DEFAULT_OCR_ENGINE")
+    if configured and configured != "auto":
+        return configured
+    return "openai_ocr"
 
 
 def run_engine(engine: str, filename: str, content: bytes) -> dict:
@@ -131,6 +141,8 @@ def run_engine_with_fallback(engine: str, fallback_engine: str, filename: str, c
 
 
 def _selected_engine(engine: str) -> str:
+    if engine == "auto":
+        return _selected_engine(default_ocr_engine())
     return engine if engine in ENGINES else "mock"
 
 
@@ -205,7 +217,7 @@ async def health() -> dict[str, str]:
 @app.post("/ocr/extract", response_model=OcrResult)
 async def extract_ocr(
     file: UploadFile = File(...),
-    engine: str = Form(default="paddleocr"),
+    engine: str = Form(default="auto"),
     fallback_engine: str = Form(default="mock"),
     document_type: str = Form(default="unknown"),
 ):
@@ -220,7 +232,7 @@ async def extract_ocr(
 @app.post("/documents/parse")
 async def parse_document(
     file: UploadFile = File(...),
-    engine: str = Form(default="paddleocr"),
+    engine: str = Form(default="auto"),
     fallback_engine: str = Form(default="mock"),
     document_type: str = Form(default="unknown"),
 ):
@@ -240,7 +252,7 @@ async def parse_document(
 async def analyze_financials(
     file: UploadFile | None = File(default=None),
     document_id: str | None = Form(default=None),
-    engine: str = Form(default="paddleocr"),
+    engine: str = Form(default="auto"),
     fallback_engine: str = Form(default="mock"),
     document_type: str = Form(default="unknown"),
 ):
@@ -262,7 +274,7 @@ async def generate_credit_memo(
     file: UploadFile | None = File(default=None),
     document_id: str | None = Form(default=None),
     borrower_metadata: str | None = Form(default=None),
-    engine: str = Form(default="paddleocr"),
+    engine: str = Form(default="auto"),
     fallback_engine: str = Form(default="mock"),
     document_type: str = Form(default="unknown"),
 ):
@@ -285,7 +297,7 @@ async def generate_credit_memo(
 async def full_pipeline(
     file: UploadFile = File(...),
     borrower_metadata: str | None = Form(default=None),
-    engine: str = Form(default="paddleocr"),
+    engine: str = Form(default="auto"),
     fallback_engine: str = Form(default="mock"),
     document_type: str = Form(default="unknown"),
 ):

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
@@ -14,6 +15,7 @@ from document_pipeline import (
     get_document,
     run_document_pipeline,
 )
+from main import default_ocr_engine, _selected_engine
 from normalize import NormalizedPage, normalize_ocr_response
 
 
@@ -49,6 +51,16 @@ def ocr_runner(warnings: list[str] | None = None, fallback_used: bool = False):
 
 
 class DocumentPipelineTests(unittest.TestCase):
+    def test_auto_engine_uses_openai_when_api_key_exists(self):
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}, clear=True):
+            self.assertEqual(default_ocr_engine(), "openai_ocr")
+            self.assertEqual(_selected_engine("auto"), "openai_ocr")
+
+    def test_auto_engine_uses_openai_without_openai_key(self):
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(default_ocr_engine(), "openai_ocr")
+            self.assertEqual(_selected_engine("auto"), "openai_ocr")
+
     def test_full_pipeline_payload_for_uploaded_financial_statement(self):
         result = run_document_pipeline(
             filename="statement.png",

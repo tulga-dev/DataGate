@@ -1,6 +1,6 @@
 # DataGate OCR Service
 
-FastAPI OCR extraction service behind the Next.js app. The service defaults to PaddleOCR when called without an engine and falls back safely to mock OCR when heavy dependencies are missing.
+FastAPI OCR extraction service behind the Next.js app. The service uses an `auto` OCR engine by default. `auto` routes to OpenAI OCR, with safe fallback behavior when the API key is missing or optional local dependencies are unavailable.
 
 ## Basic OCR Service
 
@@ -22,11 +22,40 @@ OCR_SERVICE_URL=http://localhost:8000
 
 - `mock`: implemented and dependency-free.
 - `hybrid PDF parser`: digital-first parser for PDFs. It uses PyMuPDF before OCR and records per-page strategy metadata.
+- `openai_ocr`: optional cloud OCR adapter using OpenAI vision/PDF inputs through the Responses API.
 - `paddleocr`: first practical real OCR adapter. If dependencies are missing or inference fails, the response includes warnings and falls back safely.
 - `glm_ocr`: optional future adapter path for GLM-OCR when `torch`, compatible `transformers`, and model weights are installed.
 - `surya`: placeholder adapter for layout/table fallback.
 
 The heavy adapters intentionally import optional dependencies lazily so local development never breaks.
+
+## OCR Provider Routing
+
+Endpoint form field `engine` defaults to `auto`.
+
+`auto` selects:
+
+1. `openai_ocr` as the primary OCR provider.
+2. `mock` only as the final safe fallback.
+
+PaddleOCR remains available as an explicit engine, but it is not the default demo path on Windows because some PaddlePaddle CPU builds can fail inside the native runtime before DataGate receives OCR output.
+
+## Optional OpenAI OCR
+
+OpenAI OCR is dependency-free in this service because it calls the HTTPS Responses API directly.
+
+```bash
+OPENAI_API_KEY=...
+OPENAI_OCR_MODEL=gpt-4.1-mini
+DATAGATE_DEFAULT_OCR_ENGINE=auto
+```
+
+The adapter supports:
+
+- PDFs as `input_file`
+- PNG/JPG/JPEG/WebP images as `input_image`
+
+If `OPENAI_API_KEY` is missing or the API request fails, the engine returns a structured warning and the router can fall back safely. For uploaded PDFs, DataGate does not use mock OCR text as real document evidence when a real OCR provider fails.
 
 ## Hybrid PDF Routing
 
@@ -190,6 +219,7 @@ Add sample files under `services/ocr-service/samples`, then run:
 
 ```bash
 python benchmark.py --engine paddleocr
+python benchmark.py --engine openai_ocr
 python benchmark.py --engine mock
 python benchmark.py --engine glm_ocr
 python benchmark.py --engine surya
@@ -239,7 +269,7 @@ Current mock fixtures run without OCR dependencies. Place real gold-standard PDF
 Form fields:
 
 - `file`: required multipart file.
-- `engine`: optional, defaults to `paddleocr`.
+- `engine`: optional, defaults to `auto`.
 - `fallback_engine`: optional, defaults to `mock`.
 
 Response shape is normalized by `normalize.py` and remains stable across engines.
@@ -254,7 +284,7 @@ Input: multipart upload with `file`.
 
 Optional form fields:
 
-- `engine`: defaults to `paddleocr`
+- `engine`: defaults to `auto`
 - `fallback_engine`: defaults to `mock`
 - `document_type`: defaults to `unknown`
 
@@ -369,4 +399,4 @@ Response example:
 }
 ```
 
-For scanned PDFs without installed OCR dependencies, the service returns fallback warnings such as `paddleocr_not_installed` and still produces a stable response using the mock engine when configured.
+For scanned PDFs without installed OCR dependencies, the service returns fallback warnings such as `paddleocr_not_installed` or `openai_api_key_missing` and still produces a stable response. For uploaded PDFs, mock OCR text is not treated as real document evidence when a real OCR provider fails.

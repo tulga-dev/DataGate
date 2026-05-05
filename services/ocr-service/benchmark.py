@@ -10,12 +10,14 @@ sys.path.append(str(Path(__file__).parent))
 
 from engines.glm_ocr import extract_with_glm_ocr  # noqa: E402
 from engines.mock import extract_with_mock  # noqa: E402
+from engines.openai_ocr import extract_with_openai_ocr  # noqa: E402
 from engines.paddleocr import extract_with_paddleocr  # noqa: E402
 from engines.surya import extract_with_surya  # noqa: E402
 
 ENGINES: dict[str, Callable[[str, bytes], dict]] = {
     "glm_ocr": extract_with_glm_ocr,
     "mock": extract_with_mock,
+    "openai_ocr": extract_with_openai_ocr,
     "paddleocr": extract_with_paddleocr,
     "surya": extract_with_surya,
 }
@@ -84,7 +86,7 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     parser = argparse.ArgumentParser(description="Benchmark DataGate OCR engines against files in samples/.")
-    parser.add_argument("--engine", choices=sorted(ENGINES), default="paddleocr")
+    parser.add_argument("--engine", choices=sorted(ENGINES), default="openai_ocr")
     parser.add_argument("--samples-dir", default=str(Path(__file__).parent / "samples"))
     parser.add_argument("--output-json", default=None)
     args = parser.parse_args()

@@ -49,6 +49,38 @@ The OCR response remains backward-compatible. Additional metadata appears in:
 
 Digital PDFs do not require PaddleOCR. If PyMuPDF is missing, the service returns `pymupdf_not_installed` as a warning and attempts the configured OCR fallback.
 
+## Financial Statement Extraction
+
+The OCR service adds a lending-ready `financialExtraction` object on top of parsed text and tables. It is rule-based for now and focuses on `financial_statement`.
+
+Supported financial document classes:
+
+- `financial_statement`
+- `bank_statement`
+- `tax_report`
+- `loan_contract`
+- `unknown`
+
+The extractor maps Mongolian and English accounting labels into a stable JSON schema for:
+
+- income statement
+- balance sheet
+- cash flow
+- missing fields
+- source references
+
+Every extracted value includes provenance when possible:
+
+- field name
+- normalized value
+- raw value
+- page number
+- source: `text` or `table`
+- raw label
+- confidence
+
+Numeric normalization handles comma separators, spaces, parentheses for negatives, and thousand/million scale words such as `мянга`, `сая`, `thousand`, and `million`.
+
 ## Optional PaddleOCR
 
 ```bash

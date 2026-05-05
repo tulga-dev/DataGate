@@ -49,7 +49,8 @@ export const OcrResultSchema = z.object({
   fallbackUsed: z.boolean(),
   fallbackReason: z.string().nullable().optional(),
   parserResult: z.unknown().optional(),
-  parserVersion: z.string().nullable().optional()
+  parserVersion: z.string().nullable().optional(),
+  financialExtraction: z.unknown().optional()
 });
 
 export const BaseExtractionSchema = z.object({

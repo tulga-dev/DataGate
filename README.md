@@ -47,6 +47,18 @@ Each parsed page records:
 
 If digital text and OCR text are both available, DataGate merges them and keeps provenance metadata in the normalized parser result. Missing optional parser/OCR dependencies return warnings instead of crashing.
 
+## Financial statement extraction
+
+DataGate now adds a financial extraction layer on top of parsed text and tables. For financial statements, it normalizes Mongolian and English accounting labels into lending-ready JSON:
+
+- income statement
+- balance sheet
+- cash flow
+- missing fields
+- source references with page number and raw source text/table cell
+
+It handles comma-separated numbers, spaced numbers, negative values in parentheses, and scale words like `мянга`, `сая`, `thousand`, and `million`.
+
 ## Why GLM-OCR remains optional
 
 GLM-OCR remains strategically interesting because it is a multimodal OCR/document-understanding model suited to complex scanned documents, mixed layouts, and financial-document semantics. It is not the default practical path yet because local use requires `torch`, compatible `transformers`, model weights, and likely GPU or large-memory CPU execution.

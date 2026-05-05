@@ -7,6 +7,7 @@ from engines.glm_ocr import extract_with_glm_ocr
 from engines.mock import extract_with_mock
 from engines.paddleocr import extract_with_paddleocr
 from engines.surya import extract_with_surya
+from financial.statement_extractor import extract_financial_statement
 from parsers.digital_pdf import is_pdf
 from parsers.hybrid_pdf import parse_pdf_hybrid
 
@@ -37,6 +38,7 @@ class OcrResult(BaseModel):
     fallbackReason: str | None = None
     parserResult: dict | None = None
     parserVersion: str | None = None
+    financialExtraction: dict | None = None
 
 
 app = FastAPI(title="DataGate OCR Service", version="0.1.0")
@@ -102,12 +104,16 @@ async def extract_ocr(
     selected_fallback = fallback_engine if fallback_engine in ENGINES else "mock"
 
     if is_pdf(filename, content):
-        return parse_pdf_hybrid(
+        result = parse_pdf_hybrid(
             filename,
             content,
             document_type=document_type,
             selected_engine=selected_engine,
             ocr_handler=lambda name, data: run_engine_with_fallback(selected_engine, selected_fallback, name, data),
         )
+        result["financialExtraction"] = extract_financial_statement(result)
+        return result
 
-    return run_engine_with_fallback(selected_engine, selected_fallback, filename, content)
+    result = run_engine_with_fallback(selected_engine, selected_fallback, filename, content)
+    result["financialExtraction"] = extract_financial_statement(result)
+    return result

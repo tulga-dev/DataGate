@@ -1,18 +1,22 @@
-from typing import Callable
+import json
+from typing import Any, Callable
 
 from fastapi import FastAPI, File, Form, UploadFile
 from pydantic import BaseModel, Field
 
+from document_pipeline import (
+    collect_warnings,
+    credit_memo_payload,
+    financial_analysis_payload,
+    full_pipeline_payload,
+    get_document,
+    placeholder_pipeline_result,
+    run_document_pipeline,
+)
 from engines.glm_ocr import extract_with_glm_ocr
 from engines.mock import extract_with_mock
 from engines.paddleocr import extract_with_paddleocr
 from engines.surya import extract_with_surya
-from financial.credit_memo import generate_credit_memo_markdown
-from financial.lender_insights import generate_lender_insights
-from financial.parser_audit import audit_financial_extraction
-from financial.statement_extractor import extract_financial_statement
-from parsers.digital_pdf import is_pdf
-from parsers.hybrid_pdf import parse_pdf_hybrid
 
 
 class OcrPage(BaseModel):
@@ -45,6 +49,27 @@ class OcrResult(BaseModel):
     parserAudit: dict | None = None
     lenderInsights: dict | None = None
     creditMemoMarkdown: str | None = None
+
+
+class FinancialAnalysisResponse(BaseModel):
+    document_type: str
+    financial_extraction: dict = Field(default_factory=dict)
+    parser_audit: dict = Field(default_factory=dict)
+    lender_insights: dict = Field(default_factory=dict)
+
+
+class CreditMemoResponse(BaseModel):
+    memo_markdown: str
+    data_quality: dict = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class FullPipelineResponse(BaseModel):
+    parse_result: dict = Field(default_factory=dict)
+    financial_extraction: dict = Field(default_factory=dict)
+    parser_audit: dict = Field(default_factory=dict)
+    lender_insights: dict = Field(default_factory=dict)
+    memo_markdown: str
 
 
 app = FastAPI(title="DataGate OCR Service", version="0.1.0")
@@ -92,6 +117,73 @@ def run_engine_with_fallback(engine: str, fallback_engine: str, filename: str, c
     return primary
 
 
+def _selected_engine(engine: str) -> str:
+    return engine if engine in ENGINES else "mock"
+
+
+def _selected_fallback(fallback_engine: str) -> str:
+    return fallback_engine if fallback_engine in ENGINES else "mock"
+
+
+def _parse_metadata_json(raw_metadata: str | None) -> tuple[dict[str, Any], list[str]]:
+    if not raw_metadata:
+        return {}, []
+    try:
+        value = json.loads(raw_metadata)
+    except json.JSONDecodeError:
+        return {}, ["borrower_metadata_invalid_json"]
+    if isinstance(value, dict):
+        return value, []
+    return {}, ["borrower_metadata_must_be_json_object"]
+
+
+async def _pipeline_from_upload(
+    file: UploadFile,
+    *,
+    engine: str,
+    fallback_engine: str,
+    document_type: str,
+    borrower_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    content = await file.read()
+    filename = file.filename or "document"
+    return run_document_pipeline(
+        filename=filename,
+        content=content,
+        engine=_selected_engine(engine),
+        fallback_engine=_selected_fallback(fallback_engine),
+        document_type=document_type,
+        run_engine_with_fallback=run_engine_with_fallback,
+        borrower_metadata=borrower_metadata,
+    )
+
+
+async def _pipeline_from_file_or_store(
+    *,
+    file: UploadFile | None,
+    document_id: str | None,
+    engine: str,
+    fallback_engine: str,
+    document_type: str,
+    borrower_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if file is not None:
+        return await _pipeline_from_upload(
+            file,
+            engine=engine,
+            fallback_engine=fallback_engine,
+            document_type=document_type,
+            borrower_metadata=borrower_metadata,
+        )
+
+    stored = get_document(document_id)
+    if stored is not None:
+        return stored
+
+    reason = "missing_file_or_document_id" if not document_id else f"document_not_found: {document_id}"
+    return placeholder_pipeline_result(reason)
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -104,32 +196,97 @@ async def extract_ocr(
     fallback_engine: str = Form(default="mock"),
     document_type: str = Form(default="unknown"),
 ):
-    content = await file.read()
-    filename = file.filename or "document"
-    selected_engine = engine if engine in ENGINES else "mock"
-    selected_fallback = fallback_engine if fallback_engine in ENGINES else "mock"
-
-    if is_pdf(filename, content):
-        result = parse_pdf_hybrid(
-            filename,
-            content,
-            document_type=document_type,
-            selected_engine=selected_engine,
-            ocr_handler=lambda name, data: run_engine_with_fallback(selected_engine, selected_fallback, name, data),
-        )
-        result["financialExtraction"] = extract_financial_statement(result)
-        result["parserAudit"] = audit_financial_extraction(result, result["financialExtraction"])
-        result["lenderInsights"] = generate_lender_insights(result["financialExtraction"], result["parserAudit"])
-        result["creditMemoMarkdown"] = generate_credit_memo_markdown(
-            {}, result["financialExtraction"], result["parserAudit"], result["lenderInsights"]
-        )
-        return result
-
-    result = run_engine_with_fallback(selected_engine, selected_fallback, filename, content)
-    result["financialExtraction"] = extract_financial_statement(result)
-    result["parserAudit"] = audit_financial_extraction(result, result["financialExtraction"])
-    result["lenderInsights"] = generate_lender_insights(result["financialExtraction"], result["parserAudit"])
-    result["creditMemoMarkdown"] = generate_credit_memo_markdown(
-        {}, result["financialExtraction"], result["parserAudit"], result["lenderInsights"]
+    return await _pipeline_from_upload(
+        file,
+        engine=engine,
+        fallback_engine=fallback_engine,
+        document_type=document_type,
     )
-    return result
+
+
+@app.post("/documents/parse")
+async def parse_document(
+    file: UploadFile = File(...),
+    engine: str = Form(default="paddleocr"),
+    fallback_engine: str = Form(default="mock"),
+    document_type: str = Form(default="unknown"),
+):
+    try:
+        result = await _pipeline_from_upload(
+            file,
+            engine=engine,
+            fallback_engine=fallback_engine,
+            document_type=document_type,
+        )
+        return result.get("parserResult") or {}
+    except Exception as exc:
+        return placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")["parserResult"]
+
+
+@app.post("/documents/analyze-financials", response_model=FinancialAnalysisResponse)
+async def analyze_financials(
+    file: UploadFile | None = File(default=None),
+    document_id: str | None = Form(default=None),
+    engine: str = Form(default="paddleocr"),
+    fallback_engine: str = Form(default="mock"),
+    document_type: str = Form(default="unknown"),
+):
+    try:
+        result = await _pipeline_from_file_or_store(
+            file=file,
+            document_id=document_id,
+            engine=engine,
+            fallback_engine=fallback_engine,
+            document_type=document_type,
+        )
+    except Exception as exc:
+        result = placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")
+    return financial_analysis_payload(result)
+
+
+@app.post("/documents/generate-credit-memo", response_model=CreditMemoResponse)
+async def generate_credit_memo(
+    file: UploadFile | None = File(default=None),
+    document_id: str | None = Form(default=None),
+    borrower_metadata: str | None = Form(default=None),
+    engine: str = Form(default="paddleocr"),
+    fallback_engine: str = Form(default="mock"),
+    document_type: str = Form(default="unknown"),
+):
+    metadata, metadata_warnings = _parse_metadata_json(borrower_metadata)
+    try:
+        result = await _pipeline_from_file_or_store(
+            file=file,
+            document_id=document_id,
+            engine=engine,
+            fallback_engine=fallback_engine,
+            document_type=document_type,
+            borrower_metadata=metadata,
+        )
+    except Exception as exc:
+        result = placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")
+    return credit_memo_payload(result, metadata, metadata_warnings)
+
+
+@app.post("/documents/full-pipeline", response_model=FullPipelineResponse)
+async def full_pipeline(
+    file: UploadFile = File(...),
+    borrower_metadata: str | None = Form(default=None),
+    engine: str = Form(default="paddleocr"),
+    fallback_engine: str = Form(default="mock"),
+    document_type: str = Form(default="unknown"),
+):
+    metadata, metadata_warnings = _parse_metadata_json(borrower_metadata)
+    try:
+        result = await _pipeline_from_upload(
+            file,
+            engine=engine,
+            fallback_engine=fallback_engine,
+            document_type=document_type,
+            borrower_metadata=metadata,
+        )
+        if metadata_warnings:
+            result["warnings"] = collect_warnings(result) + metadata_warnings
+    except Exception as exc:
+        result = placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")
+    return full_pipeline_payload(result)

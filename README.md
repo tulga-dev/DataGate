@@ -82,6 +82,17 @@ Key metrics include gross margin, net margin, debt to assets, debt to equity, cu
 
 DataGate now produces deterministic `creditMemoMarkdown`: a concise Mongolian credit memo for lenders. It uses structured financial extraction, parser audit, and lender insights. It does not include raw OCR text, internal parser logs, or automatic approval language.
 
+## Financial document API
+
+The OCR service exposes the full backend pipeline through lender-facing endpoints:
+
+- `POST /documents/parse`: upload one file and receive normalized parser pages, selected strategies, provenance, and warnings.
+- `POST /documents/analyze-financials`: upload a file or pass a stored `document_id` and receive document type, financial extraction, parser audit, and lender insights.
+- `POST /documents/generate-credit-memo`: upload a file or pass `document_id` and receive Mongolian credit memo Markdown plus data quality.
+- `POST /documents/full-pipeline`: upload one financial PDF and receive parsed data, extracted financials, audit score, lender insights, and memo Markdown in one response.
+
+Request/response examples live in `services/ocr-service/README.md`.
+
 ## Why GLM-OCR remains optional
 
 GLM-OCR remains strategically interesting because it is a multimodal OCR/document-understanding model suited to complex scanned documents, mixed layouts, and financial-document semantics. It is not the default practical path yet because local use requires `torch`, compatible `transformers`, model weights, and likely GPU or large-memory CPU execution.

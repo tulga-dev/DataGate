@@ -224,3 +224,130 @@ Form fields:
 - `fallback_engine`: optional, defaults to `mock`.
 
 Response shape is normalized by `normalize.py` and remains stable across engines.
+
+### Financial Document Intelligence API
+
+These endpoints expose the full lender workflow while keeping `/ocr/extract` unchanged. All heavy parser/OCR dependencies are optional. If PaddleOCR, PyMuPDF, pdf2image, table parsers, or GLM-OCR dependencies are missing, the response includes warnings and falls back where possible.
+
+#### POST `/documents/parse`
+
+Input: multipart upload with `file`.
+
+Optional form fields:
+
+- `engine`: defaults to `paddleocr`
+- `fallback_engine`: defaults to `mock`
+- `document_type`: defaults to `unknown`
+
+Example:
+
+```bash
+curl -X POST http://localhost:8000/documents/parse \
+  -F "file=@samples/financial_statement.pdf"
+```
+
+Response example:
+
+```json
+{
+  "document_id": "financial_statement.pdf:abc123",
+  "document_type": "unknown",
+  "pages": [
+    {
+      "page_number": 1,
+      "strategy": "digital",
+      "text_blocks": [],
+      "tables": [],
+      "raw_text": "...",
+      "confidence": 0.91,
+      "warnings": [],
+      "metrics": {
+        "text_char_count": 1200,
+        "word_count": 180,
+        "table_candidate_count": 2,
+        "image_area_ratio": 0.05,
+        "extraction_confidence": 0.91,
+        "selected_strategy": "digital"
+      }
+    }
+  ],
+  "global_warnings": [],
+  "parser_version": "hybrid-v1"
+}
+```
+
+#### POST `/documents/analyze-financials`
+
+Input: either multipart `file` or `document_id` from `/documents/parse`.
+
+Example:
+
+```bash
+curl -X POST http://localhost:8000/documents/analyze-financials \
+  -F "file=@samples/financial_statement.pdf"
+```
+
+Response example:
+
+```json
+{
+  "document_type": "financial_statement",
+  "financial_extraction": {},
+  "parser_audit": {},
+  "lender_insights": {}
+}
+```
+
+#### POST `/documents/generate-credit-memo`
+
+Input: either multipart `file` or `document_id`, with optional JSON string `borrower_metadata`.
+
+Example:
+
+```bash
+curl -X POST http://localhost:8000/documents/generate-credit-memo \
+  -F "file=@samples/financial_statement.pdf" \
+  -F "borrower_metadata={\"company_name\":\"Altan Trade LLC\"}"
+```
+
+Response example:
+
+```json
+{
+  "memo_markdown": "# Зээлийн шинжилгээний товч мемо\n\n...",
+  "data_quality": {
+    "overall_accuracy_score": 0.88,
+    "recommended_manual_review_fields": [],
+    "lender_insight_readiness": {
+      "ready_for_credit_memo": true
+    }
+  },
+  "warnings": []
+}
+```
+
+#### POST `/documents/full-pipeline`
+
+Input: multipart `file`, with optional JSON string `borrower_metadata`.
+
+Example:
+
+```bash
+curl -X POST http://localhost:8000/documents/full-pipeline \
+  -F "file=@samples/financial_statement.pdf" \
+  -F "borrower_metadata={\"company_name\":\"Altan Trade LLC\"}"
+```
+
+Response example:
+
+```json
+{
+  "parse_result": {},
+  "financial_extraction": {},
+  "parser_audit": {},
+  "lender_insights": {},
+  "memo_markdown": "# Зээлийн шинжилгээний товч мемо\n\n..."
+}
+```
+
+For scanned PDFs without installed OCR dependencies, the service returns fallback warnings such as `paddleocr_not_installed` and still produces a stable response using the mock engine when configured.

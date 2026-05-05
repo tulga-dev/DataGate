@@ -93,6 +93,28 @@ The OCR service exposes the full backend pipeline through lender-facing endpoint
 
 Request/response examples live in `services/ocr-service/README.md`.
 
+## DataGate Intelligence Console
+
+The frontend includes an internal testing console at `/datagate`. It is a dark, institutional product dashboard for uploading a financial PDF and inspecting the full parser pipeline.
+
+The console supports:
+
+- parse-only runs
+- financial analysis runs
+- credit memo generation
+- full pipeline runs
+- backend status display
+- sample result mode when the backend is not running
+- parsed pages, financial JSON, audit, lender insights, credit memo, and raw response tabs
+
+Set the browser-facing backend URL with:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+If this variable is missing, the console falls back to `http://localhost:8000`.
+
 ## Why GLM-OCR remains optional
 
 GLM-OCR remains strategically interesting because it is a multimodal OCR/document-understanding model suited to complex scanned documents, mixed layouts, and financial-document semantics. It is not the default practical path yet because local use requires `torch`, compatible `transformers`, model weights, and likely GPU or large-memory CPU execution.

@@ -43,3 +43,46 @@ textarea {
     linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 1) 34%),
     #ffffff;
 }
+
+.memo-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(226, 232, 240);
+  transition: background 160ms ease;
+}
+
+.memo-action-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media print {
+  body {
+    background: #ffffff;
+    color: #111827;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .memo-print,
+  .memo-print * {
+    visibility: visible;
+  }
+
+  .memo-print {
+    position: absolute;
+    inset: 0;
+    border: 0 !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+  }
+}

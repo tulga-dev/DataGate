@@ -2,6 +2,7 @@ import json
 from typing import Any, Callable
 
 from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from document_pipeline import (
@@ -73,6 +74,18 @@ class FullPipelineResponse(BaseModel):
 
 
 app = FastAPI(title="DataGate OCR Service", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3020",
+        "http://127.0.0.1:3020",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 EngineHandler = Callable[[str, bytes], dict]
 

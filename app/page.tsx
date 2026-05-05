@@ -66,6 +66,13 @@ export default async function DashboardPage() {
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
+            href="/datagate"
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-50"
+          >
+            Intelligence Console
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
+          <Link
             href="/ocr-test"
             className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-50"
           >

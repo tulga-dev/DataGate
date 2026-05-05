@@ -191,6 +191,12 @@ def extract_financial_statement(parsed_document: dict[str, Any]) -> dict[str, An
     pages = _iter_parser_pages(parsed_document)
     all_text = "\n".join(str(page.get("raw_text") or page.get("text") or "") for page in pages)
     classification = classify_financial_document(all_text)
+    parser_result = parsed_document.get("parserResult") or parsed_document.get("parser_result") or {}
+    document_type_hint = parser_result.get("document_type")
+    if classification.document_type == "unknown" and document_type_hint == "financial_statement":
+        classification.document_type = "financial_statement"
+        classification.confidence = max(classification.confidence, 0.62)
+        classification.reasons.append("Used parser document_type hint: financial_statement.")
     result = empty_financial_statement()
     result["document_type"] = classification.document_type
     result["classification_confidence"] = classification.confidence

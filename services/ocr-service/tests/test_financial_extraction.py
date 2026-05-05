@@ -13,11 +13,11 @@ from financial.numbers import parse_number
 from financial.statement_extractor import extract_financial_statement
 
 
-def parsed_document_with_text(text: str) -> dict:
+def parsed_document_with_text(text: str, document_type: str = "unknown") -> dict:
     return {
         "parserResult": {
             "document_id": "test",
-            "document_type": "unknown",
+            "document_type": document_type,
             "pages": [
                 {
                     "page_number": 1,
@@ -42,6 +42,7 @@ class FinancialExtractionTests(unittest.TestCase):
         self.assertEqual(map_label_to_field("нийт хөрөнгө").field, "total_assets")
         self.assertEqual(map_label_to_field("цэвэр ашиг").field, "net_profit")
         self.assertEqual(map_label_to_field("мөнгөн хөрөнгө").field, "cash")
+        self.assertEqual(map_label_to_field("богино хугацаат өр төлбөр").field, "short_term_debt")
 
     def test_parentheses_parse_as_negative(self) -> None:
         parsed = parse_number("(1,250,000)", "")
@@ -52,6 +53,51 @@ class FinancialExtractionTests(unittest.TestCase):
         parsed = parse_number("125", "сая төгрөг")
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed.value, 125_000_000)
+
+    def test_extracts_real_cyrillic_financial_statement_fields(self) -> None:
+        text = """
+        Санхүүгийн тайлан 2024
+        Орлогын тайлан
+        Борлуулалтын орлого: 100,000,000 төгрөг
+        Нийт ашиг: 40,000,000 төгрөг
+        Үйл ажиллагааны зардал: 12,000,000 төгрөг
+        Үйл ажиллагааны ашиг: 28,000,000 төгрөг
+        Цэвэр ашиг: 20,000,000 төгрөг
+        Баланс
+        Нийт хөрөнгө: 150,000,000 төгрөг
+        Эргэлтийн хөрөнгө: 80,000,000 төгрөг
+        Мөнгөн хөрөнгө: 30,000,000 төгрөг
+        Бараа материал: 15,000,000 төгрөг
+        Авлага: 20,000,000 төгрөг
+        Нийт өр төлбөр: 60,000,000 төгрөг
+        Богино хугацаат өр төлбөр: 25,000,000 төгрөг
+        Урт хугацаат өр төлбөр: 35,000,000 төгрөг
+        Өөрийн хөрөнгө: 90,000,000 төгрөг
+        Үйл ажиллагааны мөнгөн гүйлгээ: 18,000,000 төгрөг
+        Хөрөнгө оруулалтын мөнгөн гүйлгээ: (5,000,000) төгрөг
+        Санхүүгийн мөнгөн гүйлгээ: 3,000,000 төгрөг
+        Эцсийн мөнгөн хөрөнгө: 30,000,000 төгрөг
+        """
+        result = extract_financial_statement(parsed_document_with_text(text))
+
+        self.assertEqual(result["document_type"], "financial_statement")
+        self.assertEqual(result["currency"], "MNT")
+        self.assertEqual(result["income_statement"]["revenue"], 100_000_000)
+        self.assertEqual(result["income_statement"]["net_profit"], 20_000_000)
+        self.assertEqual(result["balance_sheet"]["total_assets"], 150_000_000)
+        self.assertEqual(result["balance_sheet"]["cash"], 30_000_000)
+        self.assertEqual(result["balance_sheet"]["total_liabilities"], 60_000_000)
+        self.assertEqual(result["balance_sheet"]["equity"], 90_000_000)
+        self.assertEqual(result["cash_flow"]["investing_cash_flow"], -5_000_000)
+        self.assertNotIn("revenue", result["missing_fields"])
+        self.assertNotIn("equity", result["missing_fields"])
+
+    def test_parser_financial_statement_hint_allows_extraction(self) -> None:
+        text = "Борлуулалтын орлого: 10,000\nЦэвэр ашиг: 1,000\nНийт хөрөнгө: 20,000"
+        result = extract_financial_statement(parsed_document_with_text(text, document_type="financial_statement"))
+
+        self.assertEqual(result["document_type"], "financial_statement")
+        self.assertEqual(result["income_statement"]["revenue"], 10_000)
 
     def test_missing_values_are_listed(self) -> None:
         text = """
@@ -110,7 +156,7 @@ class FinancialExtractionTests(unittest.TestCase):
 
     def test_classifier_detects_financial_statement(self) -> None:
         classification = classify_financial_document(
-            "balance sheet assets liabilities equity revenue net profit cash flow"
+            "санхүүгийн тайлан баланс хөрөнгө өр төлбөр орлого цэвэр ашиг мөнгөн гүйлгээ"
         )
         self.assertEqual(classification.document_type, "financial_statement")
         self.assertGreater(classification.confidence, 0.7)

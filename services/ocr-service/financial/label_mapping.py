@@ -7,34 +7,52 @@ from dataclasses import dataclass
 MONGOLIAN_ACCOUNTING_LABELS: dict[str, str] = {
     "борлуулалтын орлого": "revenue",
     "нийт борлуулалтын орлого": "revenue",
+    "борлуулалт": "revenue",
     "орлого": "revenue",
+    "үндсэн үйл ажиллагааны орлого": "revenue",
     "борлуулсан бүтээгдэхүүний өртөг": "cost_of_goods_sold",
     "борлуулалтын өртөг": "cost_of_goods_sold",
+    "борлуулсан барааны өртөг": "cost_of_goods_sold",
     "нийт ашиг": "gross_profit",
+    "бохир ашиг": "gross_profit",
     "үйл ажиллагааны зардал": "operating_expenses",
+    "удирдлагын зардал": "operating_expenses",
+    "ерөнхий ба удирдлагын зардал": "operating_expenses",
     "үйл ажиллагааны ашиг": "operating_profit",
     "цэвэр ашиг": "net_profit",
     "тайлант үеийн цэвэр ашиг": "net_profit",
+    "татварын дараах ашиг": "net_profit",
     "алдагдал": "net_profit",
     "нийт хөрөнгө": "total_assets",
+    "хөрөнгийн дүн": "total_assets",
+    "хөрөнгө нийт": "total_assets",
     "эргэлтийн хөрөнгө": "current_assets",
     "мөнгөн хөрөнгө": "cash",
     "мөнгө ба түүнтэй адилтгах хөрөнгө": "cash",
+    "касс дахь мөнгө": "cash",
+    "банкин дахь мөнгө": "cash",
     "бараа материал": "inventory",
+    "бараа материалын үлдэгдэл": "inventory",
     "авлага": "receivables",
     "дансны авлага": "receivables",
+    "худалдааны авлага": "receivables",
     "нийт өр төлбөр": "total_liabilities",
+    "өр төлбөрийн дүн": "total_liabilities",
     "өр төлбөр": "total_liabilities",
-    "богино хугацаат өр": "short_term_debt",
     "богино хугацаат өр төлбөр": "short_term_debt",
-    "урт хугацаат өр": "long_term_debt",
+    "богино хугацаат зээл": "short_term_debt",
     "урт хугацаат өр төлбөр": "long_term_debt",
+    "урт хугацаат зээл": "long_term_debt",
     "эзний өмч": "equity",
     "өөрийн хөрөнгө": "equity",
+    "эздийн өмч": "equity",
+    "хуримтлагдсан ашиг": "equity",
     "үйл ажиллагааны мөнгөн гүйлгээ": "operating_cash_flow",
+    "үндсэн үйл ажиллагааны мөнгөн гүйлгээ": "operating_cash_flow",
     "хөрөнгө оруулалтын мөнгөн гүйлгээ": "investing_cash_flow",
     "санхүүгийн мөнгөн гүйлгээ": "financing_cash_flow",
     "эцсийн мөнгөн хөрөнгө": "ending_cash",
+    "мөнгөн хөрөнгийн эцсийн үлдэгдэл": "ending_cash",
 }
 
 ENGLISH_ACCOUNTING_LABELS: dict[str, str] = {
@@ -85,6 +103,7 @@ class LabelMatch:
 
 def normalize_label(label: str) -> str:
     lowered = label.lower().strip()
+    lowered = re.sub(r"^[\d.\-)()\s]+", "", lowered)
     lowered = re.sub(r"[:：]+$", "", lowered)
     lowered = re.sub(r"\s+", " ", lowered)
     return lowered

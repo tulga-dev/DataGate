@@ -42,6 +42,35 @@ def _is_pdf(filename: str, content: bytes) -> bool:
     return Path(filename).suffix.lower() == ".pdf" or content.startswith(b"%PDF")
 
 
+def _pdf_pages_to_images(content: bytes) -> tuple[list[Any], list[str]]:
+    warnings: list[str] = []
+
+    try:
+        from pdf2image import convert_from_bytes
+
+        return convert_from_bytes(content), warnings
+    except ImportError:
+        warnings.append("pdf2image_not_installed: using pypdfium2 PDF rendering fallback.")
+    except Exception as error:
+        warnings.append(f"pdf2image_failed: using pypdfium2 PDF rendering fallback. Detail: {error}")
+
+    try:
+        import pypdfium2 as pdfium
+
+        document = pdfium.PdfDocument(content)
+        images = []
+        for page in document:
+            bitmap = page.render(scale=2)
+            images.append(bitmap.to_pil())
+        return images, warnings
+    except ImportError as error:
+        warnings.append(f"pypdfium2_not_installed: install pdf2image with Poppler or pypdfium2. Detail: {error}")
+    except Exception as error:
+        warnings.append(f"pypdfium2_pdf_render_failed: {error}")
+
+    return [], warnings
+
+
 def _run_paddleocr_on_path(ocr: Any, input_path: Path) -> tuple[str, float]:
     if hasattr(ocr, "predict"):
         raw_result = ocr.predict(str(input_path))
@@ -82,25 +111,13 @@ def extract_with_paddleocr(filename: str, content: bytes) -> dict:
         pages: list[NormalizedPage] = []
 
         if _is_pdf(filename, content):
-            try:
-                from pdf2image import convert_from_bytes
-            except ImportError:
+            images, pdf_warnings = _pdf_pages_to_images(content)
+            if not images:
                 return _mock_fallback(
                     filename,
                     content,
                     version=version,
-                    warning="pdf2image_not_installed: install pdf2image and Poppler to OCR PDF files with PaddleOCR.",
-                    reason="PDF input requires pdf2image.",
-                )
-
-            try:
-                images = convert_from_bytes(content)
-            except Exception as error:
-                return _mock_fallback(
-                    filename,
-                    content,
-                    version=version,
-                    warning=f"pdf2image_not_installed: pdf2image is installed, but PDF conversion failed. Poppler may be missing. Detail: {error}",
+                    warning="; ".join(pdf_warnings) or "pdf_conversion_failed: PDF pages could not be rendered for OCR.",
                     reason="PDF conversion failed before PaddleOCR inference.",
                 )
 
@@ -117,6 +134,8 @@ def extract_with_paddleocr(filename: str, content: bytes) -> dict:
         raw_text = "\n\n".join(page.text for page in pages if page.text).strip()
         confidence = average([page.confidence for page in pages])
         warnings: list[str] = []
+        if _is_pdf(filename, content):
+            warnings.extend(pdf_warnings)
 
         if not raw_text:
             warnings.append("no_text_detected: PaddleOCR returned no recognized text.")

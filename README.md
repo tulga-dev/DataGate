@@ -180,9 +180,10 @@ Optional PDF support for PaddleOCR:
 
 ```bash
 pip install pdf2image
+pip install pypdfium2
 ```
 
-`pdf2image` requires Poppler on the host. If PaddleOCR, pdf2image, Poppler, GLM dependencies, or model weights are missing, DataGate returns a normalized fallback response instead of crashing.
+`pdf2image` requires Poppler on the host. DataGate also supports `pypdfium2` as a Poppler-free fallback for rendering scanned PDF pages before PaddleOCR. If PaddleOCR, PDF rendering dependencies, GLM dependencies, or model weights are missing, DataGate returns a normalized fallback response instead of crashing.
 
 Run OCR benchmarks:
 

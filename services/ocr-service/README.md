@@ -155,13 +155,14 @@ PADDLEOCR_VERSION=PP-OCRv5
 
 ## Optional PDF Support
 
-The digital parser uses PyMuPDF and is included in the base requirements. PaddleOCR image files work directly. OCR for image-only PDF files requires `pdf2image`:
+The digital parser uses PyMuPDF and is included in the base requirements. PaddleOCR image files work directly. OCR for image-only PDF files can use `pdf2image` or the Poppler-free `pypdfium2` fallback:
 
 ```bash
 pip install pdf2image
+pip install pypdfium2
 ```
 
-`pdf2image` also requires Poppler to be installed on the host and available on `PATH`. Without `pdf2image` or Poppler, PDF OCR returns a structured warning and falls back safely.
+`pdf2image` also requires Poppler to be installed on the host and available on `PATH`. If Poppler is unavailable, DataGate attempts `pypdfium2`. If neither PDF rendering path is available, PDF OCR returns a structured warning and falls back safely.
 
 ## Optional Table Extraction
 
@@ -245,7 +246,7 @@ Response shape is normalized by `normalize.py` and remains stable across engines
 
 ### Financial Document Intelligence API
 
-These endpoints expose the full lender workflow while keeping `/ocr/extract` unchanged. All heavy parser/OCR dependencies are optional. If PaddleOCR, PyMuPDF, pdf2image, table parsers, or GLM-OCR dependencies are missing, the response includes warnings and falls back where possible.
+These endpoints expose the full lender workflow while keeping `/ocr/extract` unchanged. All heavy parser/OCR dependencies are optional. If PaddleOCR, PyMuPDF, PDF rendering dependencies, table parsers, or GLM-OCR dependencies are missing, the response includes warnings and falls back where possible.
 
 #### POST `/documents/parse`
 

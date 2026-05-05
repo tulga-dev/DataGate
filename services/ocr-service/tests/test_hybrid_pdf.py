@@ -35,6 +35,22 @@ def ocr_result(text: str = "OCR text from scanned PDF", fallback: bool = False) 
     return result
 
 
+def mock_fallback_result() -> dict:
+    result = normalize_ocr_response(
+        engine="mock",
+        engine_version="dev",
+        pages=[NormalizedPage(page_number=1, text="Fake mock OCR financial text", confidence=0.93)],
+        confidence=0.93,
+        warnings=[
+            "paddleocr_disabled_after_runtime_error: PaddleOCR hit a Windows CPU runtime compatibility error.",
+            "fallback_engine_used: paddleocr failed; mock produced the final OCR result.",
+        ],
+        fallback_used=True,
+        fallback_reason="paddleocr failed: PaddleOCR failed at runtime.",
+    )
+    return result
+
+
 class HybridPdfParserTests(unittest.TestCase):
     def test_digital_pdf_does_not_call_ocr_when_quality_is_good(self) -> None:
         calls: list[str] = []
@@ -137,6 +153,47 @@ class HybridPdfParserTests(unittest.TestCase):
         self.assertIn("digital_blocks_failed", result["pages"][0]["warnings"])
         self.assertEqual(result["parserResult"]["parser_version"], "hybrid-v1")
         self.assertIn("metrics", result["parserResult"]["pages"][0])
+
+    def test_pdf_parser_ignores_mock_text_when_real_ocr_fails(self) -> None:
+        page = DigitalPdfPage(
+            page_number=1,
+            raw_text="Short but real digital PDF text",
+            extraction_confidence=0.4,
+            image_area_ratio=0.2,
+        )
+
+        with patch("parsers.hybrid_pdf.extract_digital_pdf", return_value=digital_result(page)), patch(
+            "parsers.hybrid_pdf.extract_tables", return_value=no_tables()
+        ):
+            result = parse_pdf_hybrid(
+                "real-doc.pdf",
+                b"%PDF real",
+                selected_engine="paddleocr",
+                ocr_handler=lambda _name, _content: mock_fallback_result(),
+            )
+
+        self.assertTrue(result["fallbackUsed"])
+        self.assertEqual(result["pages"][0]["text"], "Short but real digital PDF text")
+        self.assertNotIn("Fake mock OCR financial text", result["rawText"])
+        self.assertIn("ocr_fallback_mock_ignored", " ".join(result["warnings"]))
+        self.assertNotIn("fallback_engine_used", " ".join(result["warnings"]))
+
+    def test_scanned_pdf_does_not_use_mock_text_when_real_ocr_fails(self) -> None:
+        page = DigitalPdfPage(page_number=1, raw_text="", extraction_confidence=0.0, image_area_ratio=0.95)
+
+        with patch("parsers.hybrid_pdf.extract_digital_pdf", return_value=digital_result(page)), patch(
+            "parsers.hybrid_pdf.extract_tables", return_value=no_tables()
+        ):
+            result = parse_pdf_hybrid(
+                "scanned.pdf",
+                b"%PDF scanned",
+                selected_engine="paddleocr",
+                ocr_handler=lambda _name, _content: mock_fallback_result(),
+            )
+
+        self.assertEqual(result["pages"][0]["strategy"], "failed")
+        self.assertEqual(result["pages"][0]["text"], "")
+        self.assertNotIn("Fake mock OCR financial text", result["rawText"])
 
 
 if __name__ == "__main__":

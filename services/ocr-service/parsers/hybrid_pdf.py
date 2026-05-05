@@ -66,6 +66,17 @@ def _merge_text(digital_text: str, ocr_text: str) -> str:
     return digital_text or ocr_text
 
 
+def _is_mock_fallback_result(ocr_result: dict | None) -> bool:
+    if not ocr_result:
+        return False
+    warnings = " ".join(str(warning) for warning in (ocr_result.get("warnings") or []))
+    return bool(
+        ocr_result.get("fallbackUsed")
+        and str(ocr_result.get("engine") or "").lower() == "mock"
+        and "fallback_engine_used" in warnings
+    )
+
+
 def _document_id(filename: str, content: bytes) -> str:
     digest = hashlib.sha256(content).hexdigest()[:16]
     return f"{filename}:{digest}"
@@ -101,9 +112,21 @@ def parse_pdf_hybrid(
             needs_ocr = True
 
     ocr_result: dict | None = None
+    mock_fallback_ignored = False
     if needs_ocr:
         ocr_result = ocr_handler(filename, content)
-        global_warnings.extend(ocr_result.get("warnings") or [])
+        if _is_mock_fallback_result(ocr_result):
+            mock_fallback_ignored = True
+            global_warnings.extend(
+                warning
+                for warning in (ocr_result.get("warnings") or [])
+                if "fallback_engine_used" not in str(warning)
+            )
+            global_warnings.append(
+                "ocr_fallback_mock_ignored: real OCR failed, so mock OCR text was not used for this uploaded PDF."
+            )
+        else:
+            global_warnings.extend(ocr_result.get("warnings") or [])
 
     normalized_pages: list[NormalizedPage] = []
     parser_pages: list[dict] = []
@@ -135,6 +158,10 @@ def parse_pdf_hybrid(
             text_blocks = []
             image_area_ratio = 1.0
             page_warnings.append("digital_page_missing: no digital text page was available.")
+
+        if mock_fallback_ignored:
+            ocr_page = None
+            page_warnings.append("ocr_unavailable: real OCR failed and mock fallback text was ignored.")
 
         ocr_text = (ocr_page or {}).get("text", "")
         ocr_confidence = float((ocr_page or {}).get("confidence", 0.0) or 0.0)
@@ -205,7 +232,7 @@ def parse_pdf_hybrid(
         "parser_version": "hybrid-v1",
     }
 
-    final_engine = (ocr_result or {}).get("engine", selected_engine)
+    final_engine = selected_engine if mock_fallback_ignored else (ocr_result or {}).get("engine", selected_engine)
     final_engine_version = (ocr_result or {}).get("engineVersion", "hybrid-v1")
     fallback_used = bool((ocr_result or {}).get("fallbackUsed", False))
     fallback_reason = (ocr_result or {}).get("fallbackReason")

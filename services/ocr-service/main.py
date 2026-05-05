@@ -7,6 +7,7 @@ from engines.glm_ocr import extract_with_glm_ocr
 from engines.mock import extract_with_mock
 from engines.paddleocr import extract_with_paddleocr
 from engines.surya import extract_with_surya
+from financial.lender_insights import generate_lender_insights
 from financial.parser_audit import audit_financial_extraction
 from financial.statement_extractor import extract_financial_statement
 from parsers.digital_pdf import is_pdf
@@ -41,6 +42,7 @@ class OcrResult(BaseModel):
     parserVersion: str | None = None
     financialExtraction: dict | None = None
     parserAudit: dict | None = None
+    lenderInsights: dict | None = None
 
 
 app = FastAPI(title="DataGate OCR Service", version="0.1.0")
@@ -115,9 +117,11 @@ async def extract_ocr(
         )
         result["financialExtraction"] = extract_financial_statement(result)
         result["parserAudit"] = audit_financial_extraction(result, result["financialExtraction"])
+        result["lenderInsights"] = generate_lender_insights(result["financialExtraction"], result["parserAudit"])
         return result
 
     result = run_engine_with_fallback(selected_engine, selected_fallback, filename, content)
     result["financialExtraction"] = extract_financial_statement(result)
     result["parserAudit"] = audit_financial_extraction(result, result["financialExtraction"])
+    result["lenderInsights"] = generate_lender_insights(result["financialExtraction"], result["parserAudit"])
     return result

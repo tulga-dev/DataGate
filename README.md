@@ -72,6 +72,12 @@ The audit checks:
 - liabilities exceeding assets
 - conflicting periods across pages
 
+## Lender insights
+
+DataGate now calculates deterministic lender insights before any LLM generation. The `lenderInsights` output includes ratios, risk flags, positive signals, borrower questions, and structured credit memo inputs.
+
+Key metrics include gross margin, net margin, debt to assets, debt to equity, current ratio, return on assets, and equity ratio.
+
 ## Why GLM-OCR remains optional
 
 GLM-OCR remains strategically interesting because it is a multimodal OCR/document-understanding model suited to complex scanned documents, mixed layouts, and financial-document semantics. It is not the default practical path yet because local use requires `torch`, compatible `transformers`, model weights, and likely GPU or large-memory CPU execution.

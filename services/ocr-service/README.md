@@ -105,6 +105,24 @@ Current red flags include:
 
 Minimum fields for credit memo readiness are revenue, net profit, total assets, total liabilities, equity, and period or fiscal year.
 
+## Lender Insights
+
+The OCR service returns deterministic `lenderInsights` before any LLM generation. It calculates ratios, risk flags, positive signals, borrower questions, and credit memo inputs from `financialExtraction` and `parserAudit`.
+
+Key metrics include:
+
+- gross margin
+- net margin
+- debt to assets
+- debt to equity
+- current ratio
+- return on assets
+- equity ratio
+
+Risk flags include negative profit, negative equity, liabilities exceeding assets, high leverage, weak current ratio, missing revenue, missing cash, low parser confidence, and documents not ready for memo generation.
+
+The output is ready to feed into Mongolian credit memo generation as structured deterministic context.
+
 ## Optional PaddleOCR
 
 ```bash

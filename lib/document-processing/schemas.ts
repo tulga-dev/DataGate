@@ -51,7 +51,8 @@ export const OcrResultSchema = z.object({
   parserResult: z.unknown().optional(),
   parserVersion: z.string().nullable().optional(),
   financialExtraction: z.unknown().optional(),
-  parserAudit: z.unknown().optional()
+  parserAudit: z.unknown().optional(),
+  lenderInsights: z.unknown().optional()
 });
 
 export const BaseExtractionSchema = z.object({

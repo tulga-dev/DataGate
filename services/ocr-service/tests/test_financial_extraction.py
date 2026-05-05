@@ -99,6 +99,61 @@ class FinancialExtractionTests(unittest.TestCase):
         self.assertEqual(result["document_type"], "financial_statement")
         self.assertEqual(result["income_statement"]["revenue"], 10_000)
 
+    def test_extracts_when_label_and_value_are_split_across_lines(self) -> None:
+        text = """
+        Борлуулалтын орлого
+        10,000,000
+        Цэвэр ашиг
+        1,500,000
+        Нийт хөрөнгө
+        25,000,000
+        Нийт өр төлбөр
+        8,000,000
+        Өөрийн хөрөнгө
+        17,000,000
+        """
+        result = extract_financial_statement(parsed_document_with_text(text))
+
+        self.assertEqual(result["document_type"], "financial_statement")
+        self.assertEqual(result["income_statement"]["revenue"], 10_000_000)
+        self.assertEqual(result["income_statement"]["net_profit"], 1_500_000)
+        self.assertEqual(result["balance_sheet"]["equity"], 17_000_000)
+
+    def test_extracts_table_label_when_not_first_cell(self) -> None:
+        document = {
+            "parserResult": {
+                "document_id": "table-offset",
+                "document_type": "unknown",
+                "pages": [
+                    {
+                        "page_number": 1,
+                        "strategy": "digital",
+                        "text_blocks": [],
+                        "tables": [
+                            {
+                                "rows": [
+                                    ["1", "Борлуулалтын орлого", "2024", "15,000,000"],
+                                    ["2", "Нийт хөрөнгө", "2024", "40,000,000"],
+                                    ["3", "Нийт өр төлбөр", "2024", "10,000,000"],
+                                ],
+                                "columns": [],
+                            }
+                        ],
+                        "raw_text": "Санхүүгийн тайлан",
+                        "confidence": 0.9,
+                    }
+                ],
+                "global_warnings": [],
+                "parser_version": "hybrid-v1",
+            }
+        }
+        result = extract_financial_statement(document)
+
+        self.assertEqual(result["document_type"], "financial_statement")
+        self.assertEqual(result["income_statement"]["revenue"], 15_000_000)
+        self.assertEqual(result["balance_sheet"]["total_assets"], 40_000_000)
+        self.assertEqual(result["balance_sheet"]["total_liabilities"], 10_000_000)
+
     def test_missing_values_are_listed(self) -> None:
         text = """
         Баланс

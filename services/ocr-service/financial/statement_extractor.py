@@ -112,6 +112,15 @@ def _iter_parser_pages(parsed_document: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _numeric_cells(values: list[str]) -> list[tuple[str, ParsedNumber]]:
+    parsed_values = []
+    for value in values:
+        parsed = find_number(value)
+        if parsed:
+            parsed_values.append((value, parsed))
+    return parsed_values
+
+
 def _extract_from_table(result: dict[str, Any], table: dict[str, Any], page_number: int) -> None:
     rows = table.get("rows") or []
     columns = table.get("columns") or []
@@ -123,22 +132,36 @@ def _extract_from_table(result: dict[str, Any], table: dict[str, Any], page_numb
     for row in combined_rows:
         if not isinstance(row, list) or len(row) < 2:
             continue
-        label = str(row[0]).strip()
-        value_candidates = [str(value).strip() for value in row[1:] if str(value).strip()]
-        if not label or not value_candidates:
+        cells = [str(value).strip() for value in row if str(value).strip()]
+        if len(cells) < 2:
             continue
-        label_match = map_label_to_field(label)
+
+        label_match = None
+        label_index = 0
+        label = ""
+        for index, cell in enumerate(cells):
+            label_match = map_label_to_field(cell)
+            if label_match:
+                label_index = index
+                label = cell
+                break
+
+        if not label_match:
+            combined_label = " ".join(cell for cell in cells if not find_number(cell))
+            label_match = map_label_to_field(combined_label)
+            label = combined_label
+
         if not label_match:
             continue
-        parsed = None
-        raw_value = ""
-        for candidate in reversed(value_candidates):
-            parsed = find_number(candidate)
-            raw_value = candidate
-            if parsed:
-                break
-        if not parsed:
+
+        value_candidates = cells[label_index + 1 :] or cells
+        parsed_candidates = _numeric_cells(value_candidates)
+        if not parsed_candidates:
+            parsed_candidates = _numeric_cells(cells)
+        if not parsed_candidates:
             continue
+
+        raw_value, parsed = parsed_candidates[-1]
         reference = {
             "field": label_match.field,
             "value": parsed.value,
@@ -147,20 +170,39 @@ def _extract_from_table(result: dict[str, Any], table: dict[str, Any], page_numb
             "source": "table",
             "raw_label": label_match.raw_label,
             "raw_cell": raw_value,
+            "row_text": " | ".join(cells),
             "confidence": label_match.confidence,
         }
         _set_field(result, label_match.field, parsed, reference)
 
 
 def _extract_from_text(result: dict[str, Any], text: str, page_number: int) -> None:
-    for line in text.splitlines():
-        clean_line = line.strip()
+    lines = [line.strip() for line in text.splitlines()]
+    for index, clean_line in enumerate(lines):
         if not clean_line:
             continue
         parts = re.split(r"[:：\t]| {2,}", clean_line, maxsplit=1)
         if len(parts) < 2:
-            match = re.match(r"(.+?)\s+(\(?-?\d[\d,\s]*(?:\.\d+)?\)?)\s*(?:MNT|USD|₮)?$", clean_line)
+            match = re.match(r"(.+?)\s+(\(?-?\d[\d,\s]*(?:\.\d+)?\)?)\s*(?:MNT|USD|₮|төгрөг)?$", clean_line)
             if not match:
+                label_match = map_label_to_field(clean_line)
+                if not label_match:
+                    continue
+                next_values = " ".join(lines[index + 1 : index + 3])
+                parsed = find_number(next_values)
+                if not parsed:
+                    continue
+                reference = {
+                    "field": label_match.field,
+                    "value": parsed.value,
+                    "raw_value": parsed.raw_value,
+                    "page_number": page_number,
+                    "source": "text",
+                    "raw_label": label_match.raw_label,
+                    "source_text": f"{clean_line} {next_values}".strip(),
+                    "confidence": max(0.48, label_match.confidence - 0.14),
+                }
+                _set_field(result, label_match.field, parsed, reference)
                 continue
             label, value_text = match.group(1), match.group(2)
         else:
@@ -187,6 +229,19 @@ def _extract_from_text(result: dict[str, Any], text: str, page_number: int) -> N
         _set_field(result, label_match.field, parsed, reference)
 
 
+def _count_accounting_label_hits(pages: list[dict[str, Any]]) -> int:
+    hits = 0
+    for page in pages:
+        for line in str(page.get("raw_text") or page.get("text") or "").splitlines():
+            if map_label_to_field(line):
+                hits += 1
+        for table in page.get("tables") or []:
+            for row in table.get("rows") or []:
+                if isinstance(row, list) and any(map_label_to_field(str(cell)) for cell in row):
+                    hits += 1
+    return hits
+
+
 def extract_financial_statement(parsed_document: dict[str, Any]) -> dict[str, Any]:
     pages = _iter_parser_pages(parsed_document)
     all_text = "\n".join(str(page.get("raw_text") or page.get("text") or "") for page in pages)
@@ -197,6 +252,11 @@ def extract_financial_statement(parsed_document: dict[str, Any]) -> dict[str, An
         classification.document_type = "financial_statement"
         classification.confidence = max(classification.confidence, 0.62)
         classification.reasons.append("Used parser document_type hint: financial_statement.")
+    if classification.document_type == "unknown" and _count_accounting_label_hits(pages) >= 2:
+        classification.document_type = "financial_statement"
+        classification.confidence = max(classification.confidence, 0.58)
+        classification.reasons.append("Detected multiple accounting labels in parsed text/tables.")
+
     result = empty_financial_statement()
     result["document_type"] = classification.document_type
     result["classification_confidence"] = classification.confidence

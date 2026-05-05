@@ -123,6 +123,22 @@ Risk flags include negative profit, negative equity, liabilities exceeding asset
 
 The output is ready to feed into Mongolian credit memo generation as structured deterministic context.
 
+## Credit Memo Markdown
+
+The OCR service returns deterministic `creditMemoMarkdown` for a concise Mongolian lender memo. It does not include raw OCR text or internal parser logs.
+
+Memo sections:
+
+- Зээл хүсэгчийн товч мэдээлэл
+- Санхүүгийн гол үзүүлэлтүүд
+- Гол харьцаа үзүүлэлтүүд
+- Эерэг дохио
+- Эрсдэлийн дохио
+- Зээл олгохоос өмнө тодруулах асуултууд
+- Урьдчилсан дүгнэлт
+
+The conclusion is deterministic and never auto-approves a loan. It uses document readiness, leverage, equity, profitability, and data quality to choose a conservative preliminary conclusion.
+
 ## Optional PaddleOCR
 
 ```bash

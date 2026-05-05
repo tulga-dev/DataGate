@@ -78,6 +78,10 @@ DataGate now calculates deterministic lender insights before any LLM generation.
 
 Key metrics include gross margin, net margin, debt to assets, debt to equity, current ratio, return on assets, and equity ratio.
 
+## Mongolian credit memo
+
+DataGate now produces deterministic `creditMemoMarkdown`: a concise Mongolian credit memo for lenders. It uses structured financial extraction, parser audit, and lender insights. It does not include raw OCR text, internal parser logs, or automatic approval language.
+
 ## Why GLM-OCR remains optional
 
 GLM-OCR remains strategically interesting because it is a multimodal OCR/document-understanding model suited to complex scanned documents, mixed layouts, and financial-document semantics. It is not the default practical path yet because local use requires `torch`, compatible `transformers`, model weights, and likely GPU or large-memory CPU execution.

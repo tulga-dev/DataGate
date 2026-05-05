@@ -181,6 +181,13 @@ class ParserAuditTests(unittest.TestCase):
         )
         self.assertTrue(any("period_conflict" in warning for warning in report["warnings"]))
 
+    def test_non_period_date_years_do_not_trigger_period_conflict(self) -> None:
+        report = audit_financial_extraction(
+            parsed_document("Loan opened 2021. Statement year 2024. Contract date 2025. Maturity 2028."),
+            extraction(fiscal_year=2024),
+        )
+        self.assertFalse(any("period_conflict" in warning for warning in report["warnings"]))
+
 
 if __name__ == "__main__":
     unittest.main()

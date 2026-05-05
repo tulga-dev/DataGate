@@ -11,7 +11,18 @@ from engines.mock import extract_with_mock
 from normalize import NormalizedPage, average, collect_text_and_scores, normalize_ocr_response
 
 
+def _prepare_paddle_environment() -> None:
+    workspace_cache = Path.cwd().parents[1] / ".cache" / "paddlex"
+    os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(workspace_cache))
+    os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
+    # Windows CPU runs can hit oneDNN PIR conversion gaps in Paddle 3.x.
+    # Keep real OCR enabled but prefer the plain CPU executor.
+    os.environ.setdefault("FLAGS_use_mkldnn", "0")
+    os.environ.setdefault("FLAGS_use_onednn", "0")
+
+
 def _create_paddleocr():
+    _prepare_paddle_environment()
     from paddleocr import PaddleOCR
 
     options: dict[str, Any] = {
@@ -27,6 +38,11 @@ def _create_paddleocr():
         options["lang"] = lang
     if version:
         options["ocr_version"] = version
+
+    det_model = os.getenv("PADDLEOCR_DET_MODEL", "PP-OCRv5_mobile_det")
+    rec_model = os.getenv("PADDLEOCR_REC_MODEL", "PP-OCRv5_mobile_rec")
+    options["text_detection_model_name"] = det_model
+    options["text_recognition_model_name"] = rec_model
 
     try:
         return PaddleOCR(**options)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 import re
 from typing import Any
 
@@ -91,15 +92,35 @@ def _approx_equal(left: float, right: float) -> bool:
 
 def _period_conflicts(parsed_document: dict[str, Any], extraction: dict[str, Any]) -> list[str]:
     text = _all_text(parsed_document)
-    raw_years = {int(year) for year in re.findall(r"\b(20\d{2}|19\d{2})\b", text)}
     period = extraction.get("period") or {}
     fiscal_year = period.get("fiscal_year")
     end_date = str(period.get("end_date") or "")
     end_year_match = re.search(r"\b(20\d{2}|19\d{2})\b", end_date)
+    current_year = datetime.now().year
 
-    # Old registration, founding, or certificate years are common in Mongolian
-    # documents and should not be treated as reporting-period conflicts.
-    years = {str(year) for year in raw_years if 2000 <= year <= 2035}
+    context_terms = [
+        "financial statement",
+        "balance sheet",
+        "income statement",
+        "cash flow",
+        "reporting period",
+        "fiscal year",
+        "тайлан",
+        "хугацаа",
+        "баланс",
+        "орлогын тайлан",
+        "мөнгөн гүйлгээ",
+    ]
+    years: set[str] = set()
+    for line in text.splitlines():
+        lowered = line.lower()
+        if not any(term in lowered for term in context_terms):
+            continue
+        for raw_year in re.findall(r"\b(20\d{2}|19\d{2})\b", line):
+            year = int(raw_year)
+            if 2000 <= year <= current_year + 1:
+                years.add(str(year))
+
     if fiscal_year:
         years.discard(str(fiscal_year))
     if end_year_match:

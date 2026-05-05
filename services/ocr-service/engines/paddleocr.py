@@ -10,6 +10,17 @@ from engines.common import temp_document_path
 from engines.mock import extract_with_mock
 from normalize import NormalizedPage, average, collect_text_and_scores, normalize_ocr_response
 
+_PADDLE_DISABLED_REASON: str | None = None
+
+
+def _is_paddle_runtime_compatibility_error(error: Exception) -> bool:
+    message = str(error)
+    return (
+        "ConvertPirAttribute2RuntimeAttribute" in message
+        or "onednn_instruction" in message
+        or "pir::ArrayAttribute" in message
+    )
+
 
 def _prepare_paddle_environment() -> None:
     workspace_cache = Path.cwd().parents[1] / ".cache" / "paddlex"
@@ -109,6 +120,7 @@ def _mock_fallback(filename: str, content: bytes, *, version: str, warning: str,
 
 
 def extract_with_paddleocr(filename: str, content: bytes) -> dict:
+    global _PADDLE_DISABLED_REASON
     started = perf_counter()
 
     try:
@@ -120,6 +132,15 @@ def extract_with_paddleocr(filename: str, content: bytes) -> dict:
             version="not-installed",
             warning="paddleocr_not_installed: install paddleocr and paddlepaddle to enable real PaddleOCR inference.",
             reason="PaddleOCR package is not installed.",
+        )
+
+    if _PADDLE_DISABLED_REASON:
+        return _mock_fallback(
+            filename,
+            content,
+            version=version,
+            warning=f"paddleocr_disabled_after_runtime_error: {_PADDLE_DISABLED_REASON}",
+            reason=_PADDLE_DISABLED_REASON,
         )
 
     try:
@@ -167,10 +188,18 @@ def extract_with_paddleocr(filename: str, content: bytes) -> dict:
             warnings=warnings,
         )
     except Exception as error:
+        if _is_paddle_runtime_compatibility_error(error):
+            _PADDLE_DISABLED_REASON = (
+                "PaddleOCR hit a Windows CPU runtime compatibility error. "
+                "DataGate disabled PaddleOCR for this service session and used fallback OCR."
+            )
+            warning = f"paddleocr_windows_cpu_runtime_unsupported: {error}"
+        else:
+            warning = f"paddleocr_runtime_error: {error}"
         return _mock_fallback(
             filename,
             content,
             version=version,
-            warning=f"paddleocr_runtime_error: {error}",
+            warning=warning,
             reason="PaddleOCR failed at runtime.",
         )

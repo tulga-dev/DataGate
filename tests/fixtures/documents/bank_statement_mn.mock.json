@@ -1,0 +1,28 @@
+{
+  "document_name": "bank_statement_mn",
+  "parser_result": {
+    "document_id": "fixture:bank_statement_mn",
+    "document_type": "bank_statement",
+    "pages": [
+      {
+        "page_number": 1,
+        "strategy": "digital",
+        "text_blocks": [],
+        "tables": [],
+        "raw_text": "Khan Bank account statement 2025\nAccount holder: Altan Trade LLC\nOpening balance: 10,000,000 MNT\nClosing balance: 15,000,000 MNT\nTransactions and balance summary.",
+        "confidence": 0.9,
+        "warnings": [],
+        "metrics": {
+          "text_char_count": 158,
+          "word_count": 22,
+          "table_candidate_count": 0,
+          "image_area_ratio": 0.0,
+          "extraction_confidence": 0.9,
+          "selected_strategy": "digital"
+        }
+      }
+    ],
+    "global_warnings": [],
+    "parser_version": "fixture-v1"
+  }
+}

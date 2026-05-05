@@ -1,0 +1,39 @@
+{
+  "fixture_count": 4,
+  "results": [
+    {
+      "document_name": "bad_quality_scan",
+      "field_accuracy": 0.0,
+      "missing_fields": [],
+      "wrong_fields": [],
+      "parser_strategy": "failed",
+      "runtime_ms": 0,
+      "expected_available": false
+    },
+    {
+      "document_name": "bank_statement_mn",
+      "field_accuracy": 0.0,
+      "missing_fields": [],
+      "wrong_fields": [],
+      "parser_strategy": "digital",
+      "runtime_ms": 0,
+      "expected_available": false
+    },
+    {
+      "document_name": "digital_financial_statement_mn",
+      "field_accuracy": 1.0,
+      "missing_fields": [],
+      "wrong_fields": [],
+      "parser_strategy": "digital",
+      "runtime_ms": 0
+    },
+    {
+      "document_name": "scanned_financial_statement_mn",
+      "field_accuracy": 1.0,
+      "missing_fields": [],
+      "wrong_fields": [],
+      "parser_strategy": "ocr",
+      "runtime_ms": 0
+    }
+  ]
+}

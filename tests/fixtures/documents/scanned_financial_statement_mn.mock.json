@@ -1,0 +1,28 @@
+{
+  "document_name": "scanned_financial_statement_mn",
+  "parser_result": {
+    "document_id": "fixture:scanned_financial_statement_mn",
+    "document_type": "financial_statement",
+    "pages": [
+      {
+        "page_number": 1,
+        "strategy": "ocr",
+        "text_blocks": [],
+        "tables": [],
+        "raw_text": "Financial statement 2025\nBalance sheet income statement cash flow\nRevenue: 800,000 MNT\nGross profit: 300,000 MNT\nNet profit: 50,000 MNT\nTotal assets: 700,000 MNT\nCurrent assets: 360,000 MNT\nCash: 110,000 MNT\nTotal liabilities: 260,000 MNT\nShort-term debt: 140,000 MNT\nEquity: 440,000 MNT",
+        "confidence": 0.83,
+        "warnings": ["fixture_scanned_document"],
+        "metrics": {
+          "text_char_count": 291,
+          "word_count": 42,
+          "table_candidate_count": 0,
+          "image_area_ratio": 0.92,
+          "extraction_confidence": 0.83,
+          "selected_strategy": "ocr"
+        }
+      }
+    ],
+    "global_warnings": ["fixture_scanned_document"],
+    "parser_version": "fixture-v1"
+  }
+}

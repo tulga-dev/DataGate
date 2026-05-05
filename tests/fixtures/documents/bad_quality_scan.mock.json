@@ -1,0 +1,28 @@
+{
+  "document_name": "bad_quality_scan",
+  "parser_result": {
+    "document_id": "fixture:bad_quality_scan",
+    "document_type": "unknown",
+    "pages": [
+      {
+        "page_number": 1,
+        "strategy": "failed",
+        "text_blocks": [],
+        "tables": [],
+        "raw_text": "Fin stat 2025 rev 8OO OOO MNT total asset unreadable liab ???",
+        "confidence": 0.28,
+        "warnings": ["low_quality_fixture", "text_uncertain"],
+        "metrics": {
+          "text_char_count": 62,
+          "word_count": 12,
+          "table_candidate_count": 0,
+          "image_area_ratio": 0.98,
+          "extraction_confidence": 0.28,
+          "selected_strategy": "failed"
+        }
+      }
+    ],
+    "global_warnings": ["low_quality_fixture", "text_uncertain"],
+    "parser_version": "fixture-v1"
+  }
+}

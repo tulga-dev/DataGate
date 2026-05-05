@@ -1,0 +1,15 @@
+{
+  "document_name": "digital_financial_statement_mn",
+  "document_type": "financial_statement",
+  "fields": {
+    "revenue": 1000000,
+    "gross_profit": 420000,
+    "net_profit": 120000,
+    "total_assets": 900000,
+    "current_assets": 500000,
+    "cash": 220000,
+    "total_liabilities": 320000,
+    "short_term_debt": 180000,
+    "equity": 580000
+  }
+}

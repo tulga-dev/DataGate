@@ -208,6 +208,44 @@ The MVP currently stores document metadata and extracted data. File bucket uploa
 - Store human corrections as labels.
 - Later fine-tune or build a post-OCR correction model.
 
+## Parser benchmark harness
+
+DataGate includes a repeatable parser benchmark for financial statement extraction accuracy.
+
+Run:
+
+```bash
+python scripts/benchmark_parser.py --fixtures tests/fixtures/documents
+```
+
+The benchmark prints JSON and writes `benchmark_results.json`.
+
+Fixture layout:
+
+- Put source documents in `tests/fixtures/documents`.
+- Put gold-standard expected outputs in `tests/fixtures/expected`.
+- Expected files use the pattern `{document_name}.expected.json`.
+- Real PDFs should use names like `digital_financial_statement_mn.pdf` and `scanned_financial_statement_mn.pdf`.
+- Until real PDFs are available, `.mock.json` fixtures provide normalized parser output and run without OCR dependencies.
+
+Gold-standard expected output format:
+
+```json
+{
+  "document_name": "digital_financial_statement_mn",
+  "document_type": "financial_statement",
+  "fields": {
+    "revenue": 1000000,
+    "net_profit": 120000,
+    "total_assets": 900000,
+    "total_liabilities": 320000,
+    "equity": 580000
+  }
+}
+```
+
+After adding a new real document, create its matching expected JSON from manually verified values. The benchmark reports field accuracy, missing fields, wrong fields, parser strategy, and runtime so DataGate extraction quality can be tracked after each parser change.
+
 ## Future roadmap
 
 - Real GLM-OCR integration.

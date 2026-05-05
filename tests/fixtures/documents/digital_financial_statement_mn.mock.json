@@ -1,0 +1,47 @@
+{
+  "document_name": "digital_financial_statement_mn",
+  "parser_result": {
+    "document_id": "fixture:digital_financial_statement_mn",
+    "document_type": "financial_statement",
+    "pages": [
+      {
+        "page_number": 1,
+        "strategy": "digital",
+        "text_blocks": [],
+        "tables": [
+          {
+            "page_number": 1,
+            "rows": [
+              ["Revenue", "1,000,000 MNT"],
+              ["Gross profit", "420,000 MNT"],
+              ["Net profit", "120,000 MNT"],
+              ["Total assets", "900,000 MNT"],
+              ["Current assets", "500,000 MNT"],
+              ["Cash", "220,000 MNT"],
+              ["Total liabilities", "320,000 MNT"],
+              ["Short-term debt", "180,000 MNT"],
+              ["Equity", "580,000 MNT"]
+            ],
+            "columns": [],
+            "bbox": null,
+            "confidence": 0.94,
+            "source": "manual"
+          }
+        ],
+        "raw_text": "Financial statement 2025\nBalance sheet and income statement\nRevenue: 1,000,000 MNT\nGross profit: 420,000 MNT\nNet profit: 120,000 MNT\nTotal assets: 900,000 MNT\nCurrent assets: 500,000 MNT\nCash: 220,000 MNT\nTotal liabilities: 320,000 MNT\nShort-term debt: 180,000 MNT\nEquity: 580,000 MNT",
+        "confidence": 0.95,
+        "warnings": [],
+        "metrics": {
+          "text_char_count": 299,
+          "word_count": 43,
+          "table_candidate_count": 1,
+          "image_area_ratio": 0.0,
+          "extraction_confidence": 0.95,
+          "selected_strategy": "digital"
+        }
+      }
+    ],
+    "global_warnings": [],
+    "parser_version": "fixture-v1"
+  }
+}

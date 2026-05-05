@@ -1,0 +1,15 @@
+{
+  "document_name": "scanned_financial_statement_mn",
+  "document_type": "financial_statement",
+  "fields": {
+    "revenue": 800000,
+    "gross_profit": 300000,
+    "net_profit": 50000,
+    "total_assets": 700000,
+    "current_assets": 360000,
+    "cash": 110000,
+    "total_liabilities": 260000,
+    "short_term_debt": 140000,
+    "equity": 440000
+  }
+}

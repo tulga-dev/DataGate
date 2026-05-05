@@ -213,6 +213,24 @@ Run parser tests:
 python -m unittest discover -s tests
 ```
 
+## Parser Accuracy Benchmark
+
+The repository includes a benchmark harness for tracking parser and financial extraction accuracy over time.
+
+```bash
+python scripts/benchmark_parser.py --fixtures tests/fixtures/documents
+```
+
+The script:
+
+- loads real PDFs/images or lightweight `.mock.json` parser fixtures
+- runs the parser output through the financial statement extractor
+- compares extracted values against `tests/fixtures/expected/*.expected.json`
+- prints JSON results
+- saves the same payload to `benchmark_results.json`
+
+Current mock fixtures run without OCR dependencies. Place real gold-standard PDFs in `tests/fixtures/documents` using names such as `digital_financial_statement_mn.pdf` and add manually verified expected values in `tests/fixtures/expected`.
+
 ## API
 
 `POST /ocr/extract`

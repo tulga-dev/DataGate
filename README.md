@@ -59,6 +59,19 @@ DataGate now adds a financial extraction layer on top of parsed text and tables.
 
 It handles comma-separated numbers, spaced numbers, negative values in parentheses, and scale words like `мянга`, `сая`, `thousand`, and `million`.
 
+## Parser accuracy audit
+
+DataGate now produces a lender-facing `parserAudit` report. It scores extracted fields against source references, flags accounting consistency issues, and tells whether a statement is ready for a credit memo.
+
+The audit checks:
+
+- source evidence quality by field
+- balance sheet equation
+- profit/loss sign conflicts
+- missing revenue when profit exists
+- liabilities exceeding assets
+- conflicting periods across pages
+
 ## Why GLM-OCR remains optional
 
 GLM-OCR remains strategically interesting because it is a multimodal OCR/document-understanding model suited to complex scanned documents, mixed layouts, and financial-document semantics. It is not the default practical path yet because local use requires `torch`, compatible `transformers`, model weights, and likely GPU or large-memory CPU execution.

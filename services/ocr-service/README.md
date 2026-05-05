@@ -81,6 +81,30 @@ Every extracted value includes provenance when possible:
 
 Numeric normalization handles comma separators, spaces, parentheses for negatives, and thousand/million scale words such as `мянга`, `сая`, `thousand`, and `million`.
 
+## Parser Accuracy Audit
+
+The OCR service also returns `parserAudit`, a lender-facing quality report produced entirely from parser output and financial extraction output. It does not depend on a specific OCR engine.
+
+The audit includes:
+
+- overall accuracy score
+- per-field confidence and evidence status
+- page-level evidence references
+- red flags
+- warnings
+- recommended manual review fields
+- credit memo readiness
+
+Current red flags include:
+
+- balance sheet mismatch: assets do not approximately equal liabilities plus equity
+- profit/loss sign conflict
+- revenue missing while profit exists
+- liabilities exceeding assets
+- conflicting periods across pages
+
+Minimum fields for credit memo readiness are revenue, net profit, total assets, total liabilities, equity, and period or fiscal year.
+
 ## Optional PaddleOCR
 
 ```bash

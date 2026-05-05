@@ -91,10 +91,19 @@ def _approx_equal(left: float, right: float) -> bool:
 
 def _period_conflicts(parsed_document: dict[str, Any], extraction: dict[str, Any]) -> list[str]:
     text = _all_text(parsed_document)
-    years = set(re.findall(r"\b(20\d{2}|19\d{2})\b", text))
-    fiscal_year = extraction.get("period", {}).get("fiscal_year")
+    raw_years = {int(year) for year in re.findall(r"\b(20\d{2}|19\d{2})\b", text)}
+    period = extraction.get("period") or {}
+    fiscal_year = period.get("fiscal_year")
+    end_date = str(period.get("end_date") or "")
+    end_year_match = re.search(r"\b(20\d{2}|19\d{2})\b", end_date)
+
+    # Old registration, founding, or certificate years are common in Mongolian
+    # documents and should not be treated as reporting-period conflicts.
+    years = {str(year) for year in raw_years if 2000 <= year <= 2035}
     if fiscal_year:
         years.discard(str(fiscal_year))
+    if end_year_match:
+        years.discard(end_year_match.group(1))
     if len(years) >= 2:
         return [f"period_conflict: multiple fiscal years detected in source text ({', '.join(sorted(years))})."]
     return []

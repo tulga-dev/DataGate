@@ -167,6 +167,20 @@ class ParserAuditTests(unittest.TestCase):
         self.assertIn("profit_sign_conflict", joined)
         self.assertIn("liabilities_exceed_assets", joined)
 
+    def test_historical_reference_year_does_not_trigger_period_conflict(self) -> None:
+        report = audit_financial_extraction(
+            parsed_document("Financial statement 2024. Company certificate reference year 1917."),
+            extraction(fiscal_year=2024),
+        )
+        self.assertFalse(any("period_conflict" in warning for warning in report["warnings"]))
+
+    def test_multiple_recent_reporting_years_still_trigger_period_conflict(self) -> None:
+        report = audit_financial_extraction(
+            parsed_document("Financial statement includes 2024, 2023, and 2022 comparative columns."),
+            extraction(fiscal_year=None),
+        )
+        self.assertTrue(any("period_conflict" in warning for warning in report["warnings"]))
+
 
 if __name__ == "__main__":
     unittest.main()

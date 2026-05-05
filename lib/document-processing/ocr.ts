@@ -1,5 +1,5 @@
 import { OcrResultSchema, type OcrResult } from "./schemas";
-import type { OcrEngine, OcrOptions } from "./types";
+import type { DocumentType, OcrEngine, OcrOptions } from "./types";
 
 const mockRawText = `DATA GATE MOCK OCR
 ЗЭЭЛИЙН ГЭРЭЭ / Loan Agreement
@@ -83,7 +83,7 @@ function normalizeEngine(value?: string | null): OcrEngine {
 
 export async function extractTextFromDocument(
   file: File,
-  options: OcrOptions = {}
+  options: OcrOptions & { requestedDocumentType?: DocumentType | "auto" } = {}
 ): Promise<OcrResult> {
   const serviceUrl = process.env.OCR_SERVICE_URL;
   const preferredEngine = options.forceMock ? "mock" : options.preferredEngine ?? (serviceUrl ? "paddleocr" : "mock");
@@ -100,6 +100,7 @@ export async function extractTextFromDocument(
     formData.append("file", file);
     formData.append("engine", preferredEngine);
     formData.append("fallback_engine", fallbackEngine);
+    formData.append("document_type", options.requestedDocumentType && options.requestedDocumentType !== "auto" ? options.requestedDocumentType : "unknown");
 
     const response = await fetch(`${serviceUrl.replace(/\/$/, "")}/ocr/extract`, {
       method: "POST",

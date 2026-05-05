@@ -13,6 +13,9 @@ class NormalizedPage:
     markdown: str | None = None
     blocks: list[Any] | None = None
     tables: list[Any] | None = None
+    warnings: list[str] | None = None
+    strategy: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 def guess_language(text: str) -> str:
@@ -55,6 +58,8 @@ def normalize_ocr_response(
     warnings: list[str] | None = None,
     fallback_used: bool = False,
     fallback_reason: str | None = None,
+    parser_result: dict[str, Any] | None = None,
+    parser_version: str | None = None,
 ) -> dict:
     started_at = started_at or perf_counter()
     warnings = warnings or []
@@ -76,21 +81,26 @@ def normalize_ocr_response(
         page_texts.append(page_text)
         page_confidences.append(page_confidence)
         page_markdown = page.markdown if page.markdown is not None else markdown_from_text(engine, page_text)
-        page_payloads.append(
-            {
-                "pageNumber": page.page_number or index,
-                "text": page_text,
-                "markdown": page_markdown,
-                "blocks": page.blocks or [],
-                "tables": page.tables or [],
-                "confidence": page_confidence,
-            }
-        )
+        payload = {
+            "pageNumber": page.page_number or index,
+            "text": page_text,
+            "markdown": page_markdown,
+            "blocks": page.blocks or [],
+            "tables": page.tables or [],
+            "confidence": page_confidence,
+        }
+        if page.warnings is not None:
+            payload["warnings"] = page.warnings
+        if page.strategy is not None:
+            payload["strategy"] = page.strategy
+        if page.metadata is not None:
+            payload["metadata"] = page.metadata
+        page_payloads.append(payload)
 
     merged_text = raw_text if raw_text is not None else "\n\n".join(text for text in page_texts if text).strip()
     normalized_confidence = clamp_confidence(confidence if confidence is not None else average(page_confidences))
 
-    return {
+    result = {
         "engine": engine,
         "engineVersion": engine_version,
         "rawText": merged_text,
@@ -103,6 +113,11 @@ def normalize_ocr_response(
         "fallbackUsed": fallback_used,
         "fallbackReason": fallback_reason,
     }
+    if parser_result is not None:
+        result["parserResult"] = parser_result
+    if parser_version is not None:
+        result["parserVersion"] = parser_version
+    return result
 
 
 def result_to_python(value: Any) -> Any:

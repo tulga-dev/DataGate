@@ -19,7 +19,21 @@ export const OcrPageSchema = z.object({
   markdown: z.string().nullable().optional(),
   blocks: z.array(z.unknown()),
   tables: z.array(z.unknown()),
-  confidence: z.number().min(0).max(1)
+  confidence: z.number().min(0).max(1),
+  warnings: z.array(z.string()).optional(),
+  strategy: z.enum(["digital", "ocr", "hybrid", "failed"]).nullable().optional(),
+  metadata: z
+    .object({
+      text_char_count: z.number().optional(),
+      word_count: z.number().optional(),
+      table_candidate_count: z.number().optional(),
+      image_area_ratio: z.number().optional(),
+      extraction_confidence: z.number().optional(),
+      selected_strategy: z.string().optional()
+    })
+    .passthrough()
+    .nullable()
+    .optional()
 });
 
 export const OcrResultSchema = z.object({
@@ -33,7 +47,9 @@ export const OcrResultSchema = z.object({
   warnings: z.array(z.string()),
   processingTimeMs: z.number().int().nonnegative(),
   fallbackUsed: z.boolean(),
-  fallbackReason: z.string().nullable().optional()
+  fallbackReason: z.string().nullable().optional(),
+  parserResult: z.unknown().optional(),
+  parserVersion: z.string().nullable().optional()
 });
 
 export const BaseExtractionSchema = z.object({

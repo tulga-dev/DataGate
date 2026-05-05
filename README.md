@@ -32,6 +32,21 @@ Engine routing:
 3. Advanced optional request: GLM-OCR
 4. Fallback: mock OCR
 
+## Hybrid PDF parser
+
+PDF documents now use a digital-first parser before OCR. DataGate checks whether each PDF page has extractable text with PyMuPDF, calculates page-level quality metrics, and only calls OCR for scanned/image-heavy pages or weak digital extraction.
+
+Each parsed page records:
+
+- selected strategy: `digital`, `ocr`, `hybrid`, or `failed`
+- text character count and word count
+- table candidate count
+- image area ratio
+- extraction confidence
+- page warnings
+
+If digital text and OCR text are both available, DataGate merges them and keeps provenance metadata in the normalized parser result. Missing optional parser/OCR dependencies return warnings instead of crashing.
+
 ## Why GLM-OCR remains optional
 
 GLM-OCR remains strategically interesting because it is a multimodal OCR/document-understanding model suited to complex scanned documents, mixed layouts, and financial-document semantics. It is not the default practical path yet because local use requires `torch`, compatible `transformers`, model weights, and likely GPU or large-memory CPU execution.

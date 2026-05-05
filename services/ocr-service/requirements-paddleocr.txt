@@ -5,3 +5,7 @@ paddleocr>=3.0.0
 
 # Optional PDF support:
 # pdf2image
+
+# Optional table extraction hooks:
+# pdfplumber
+# camelot-py

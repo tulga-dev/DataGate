@@ -1,3 +1,17 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "/api"
+    },
+    {
+      "source": "/ocr/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/documents/:path*",
+      "destination": "/api"
+    }
+  ]
 }

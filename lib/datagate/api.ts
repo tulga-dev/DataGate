@@ -3,7 +3,9 @@ import type { FullPipelineResponse } from "@/lib/datagate/types";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.VITE_API_BASE_URL ||
-  "http://localhost:8000";
+  (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+    ? ""
+    : "http://localhost:8000");
 
 async function upload<T>(endpoint: string, file: File, borrowerMetadata?: Record<string, unknown>): Promise<T> {
   const formData = new FormData();

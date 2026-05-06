@@ -9,12 +9,15 @@ export type ClientPdfTextPayload = {
 };
 
 export async function extractPdfTextInBrowser(file: File): Promise<ClientPdfTextPayload> {
+  const worker = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url");
   const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as {
+    GlobalWorkerOptions: { workerSrc: string };
     getDocument: (options: { data: Uint8Array; disableWorker?: boolean }) => { promise: Promise<unknown> };
   };
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const loadingTask = pdfjs.getDocument({ data: bytes, disableWorker: true });
+  const loadingTask = pdfjs.getDocument({ data: bytes });
   const pdf = (await loadingTask.promise) as {
     numPages: number;
     getPage: (pageNumber: number) => Promise<{

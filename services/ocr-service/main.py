@@ -30,6 +30,7 @@ from document_pipeline import (
     get_document,
     placeholder_pipeline_result,
     run_document_pipeline,
+    run_text_pipeline,
 )
 from engines.glm_ocr import extract_with_glm_ocr
 from engines.mock import extract_with_mock
@@ -89,6 +90,18 @@ class FullPipelineResponse(BaseModel):
     parser_audit: dict = Field(default_factory=dict)
     lender_insights: dict = Field(default_factory=dict)
     memo_markdown: str
+
+
+class TextPageInput(BaseModel):
+    page_number: int
+    raw_text: str
+
+
+class TextPipelineRequest(BaseModel):
+    filename: str = "document.pdf"
+    pages: list[TextPageInput]
+    document_type: str = "unknown"
+    borrower_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 app = FastAPI(title="DataGate OCR Service", version="0.1.0")
@@ -178,6 +191,19 @@ def _parse_metadata_json(raw_metadata: str | None) -> tuple[dict[str, Any], list
     return {}, ["borrower_metadata_must_be_json_object"]
 
 
+def _pipeline_from_text_request(request: TextPipelineRequest) -> dict[str, Any]:
+    if not request.pages:
+        return placeholder_pipeline_result("missing_client_pdf_text_pages")
+    if not any(page.raw_text.strip() for page in request.pages):
+        return placeholder_pipeline_result("client_pdf_text_empty: no readable text was extracted in the browser.")
+    return run_text_pipeline(
+        filename=request.filename,
+        pages=[page.model_dump() for page in request.pages],
+        document_type=request.document_type,
+        borrower_metadata=request.borrower_metadata,
+    )
+
+
 async def _pipeline_from_upload(
     file: UploadFile,
     *,
@@ -264,6 +290,15 @@ async def parse_document(
         return placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")["parserResult"]
 
 
+@app.post("/documents/parse-text")
+async def parse_document_text(request: TextPipelineRequest):
+    try:
+        result = _pipeline_from_text_request(request)
+        return result.get("parserResult") or {}
+    except Exception as exc:
+        return placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")["parserResult"]
+
+
 @app.post("/documents/analyze-financials", response_model=FinancialAnalysisResponse)
 async def analyze_financials(
     file: UploadFile | None = File(default=None),
@@ -280,6 +315,15 @@ async def analyze_financials(
             fallback_engine=fallback_engine,
             document_type=document_type,
         )
+    except Exception as exc:
+        result = placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")
+    return financial_analysis_payload(result)
+
+
+@app.post("/documents/analyze-financials-text", response_model=FinancialAnalysisResponse)
+async def analyze_financials_text(request: TextPipelineRequest):
+    try:
+        result = _pipeline_from_text_request(request)
     except Exception as exc:
         result = placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")
     return financial_analysis_payload(result)
@@ -309,6 +353,15 @@ async def generate_credit_memo(
     return credit_memo_payload(result, metadata, metadata_warnings)
 
 
+@app.post("/documents/generate-credit-memo-text", response_model=CreditMemoResponse)
+async def generate_credit_memo_text(request: TextPipelineRequest):
+    try:
+        result = _pipeline_from_text_request(request)
+    except Exception as exc:
+        result = placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")
+    return credit_memo_payload(result, request.borrower_metadata, [])
+
+
 @app.post("/documents/full-pipeline", response_model=FullPipelineResponse)
 async def full_pipeline(
     file: UploadFile = File(...),
@@ -328,6 +381,15 @@ async def full_pipeline(
         )
         if metadata_warnings:
             result["warnings"] = collect_warnings(result) + metadata_warnings
+    except Exception as exc:
+        result = placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")
+    return full_pipeline_payload(result)
+
+
+@app.post("/documents/full-pipeline-text", response_model=FullPipelineResponse)
+async def full_pipeline_text(request: TextPipelineRequest):
+    try:
+        result = _pipeline_from_text_request(request)
     except Exception as exc:
         result = placeholder_pipeline_result(f"pipeline_error: {type(exc).__name__}: {exc}")
     return full_pipeline_payload(result)

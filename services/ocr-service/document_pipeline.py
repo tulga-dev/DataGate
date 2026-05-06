@@ -7,6 +7,7 @@ from financial.credit_memo import generate_credit_memo_markdown
 from financial.lender_insights import generate_lender_insights
 from financial.parser_audit import audit_financial_extraction
 from financial.statement_extractor import extract_financial_statement
+from normalize import NormalizedPage, normalize_ocr_response
 from parsers.digital_pdf import is_pdf
 from parsers.hybrid_pdf import parse_pdf_hybrid
 
@@ -149,6 +150,86 @@ def run_document_pipeline(
     parser_result = parser_result_from_ocr_result(result, filename, content)
     result["parserResult"] = parser_result
     result["parserVersion"] = parser_result.get("parser_version")
+    enriched = enrich_pipeline_result(result, borrower_metadata)
+    store_document(enriched)
+    return enriched
+
+
+def run_text_pipeline(
+    *,
+    filename: str,
+    pages: list[dict[str, Any]],
+    document_type: str,
+    borrower_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    normalized_pages: list[NormalizedPage] = []
+    parser_pages: list[dict[str, Any]] = []
+    raw_chunks: list[str] = []
+
+    for index, page in enumerate(pages, start=1):
+        page_number = int(page.get("page_number") or page.get("pageNumber") or index)
+        raw_text = str(page.get("raw_text") or page.get("text") or "").strip()
+        raw_chunks.append(raw_text)
+        confidence = 0.88 if raw_text else 0.0
+        metadata = {
+            "text_char_count": len(raw_text),
+            "word_count": len(raw_text.split()),
+            "table_candidate_count": 0,
+            "image_area_ratio": 0.0,
+            "extraction_confidence": confidence,
+            "selected_strategy": "client_digital_text",
+        }
+        normalized_pages.append(
+            NormalizedPage(
+                page_number=page_number,
+                text=raw_text,
+                confidence=confidence,
+                warnings=[] if raw_text else ["client_pdf_page_text_empty"],
+                strategy="digital",
+                metadata=metadata,
+            )
+        )
+        parser_pages.append(
+            {
+                "page_number": page_number,
+                "strategy": "digital",
+                "text_blocks": [],
+                "tables": [],
+                "raw_text": raw_text,
+                "confidence": confidence,
+                "warnings": [] if raw_text else ["client_pdf_page_text_empty"],
+                "metrics": metadata,
+                "provenance": {
+                    "digital_parser": "browser-pdfjs",
+                    "digital_available": bool(raw_text),
+                    "ocr_engine": None,
+                    "ocr_available": False,
+                },
+            }
+        )
+
+    raw_text = "\n\n".join(chunk for chunk in raw_chunks if chunk).strip()
+    content_digest = raw_text.encode("utf-8")
+    parser_result = {
+        "document_id": document_id_for(filename, content_digest),
+        "document_type": document_type,
+        "pages": parser_pages,
+        "global_warnings": [
+            "client_pdf_text_mode: large PDF was parsed in the browser to avoid serverless upload size limits."
+        ],
+        "parser_version": "client-digital-text-v1",
+    }
+    result = normalize_ocr_response(
+        engine="client_pdf_text",
+        engine_version="pdfjs-browser",
+        pages=normalized_pages,
+        confidence=0.88 if raw_text else 0.0,
+        warnings=parser_result["global_warnings"],
+        parser_result=parser_result,
+        parser_version="client-digital-text-v1",
+    )
+    result["parserResult"] = parser_result
+    result["parserVersion"] = parser_result["parser_version"]
     enriched = enrich_pipeline_result(result, borrower_metadata)
     store_document(enriched)
     return enriched

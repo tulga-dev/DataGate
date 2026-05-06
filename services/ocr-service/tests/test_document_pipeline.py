@@ -14,6 +14,7 @@ from document_pipeline import (
     full_pipeline_payload,
     get_document,
     run_document_pipeline,
+    run_text_pipeline,
 )
 from main import default_ocr_engine, _selected_engine
 from normalize import NormalizedPage, normalize_ocr_response
@@ -80,6 +81,20 @@ class DocumentPipelineTests(unittest.TestCase):
         self.assertIn("overall_accuracy_score", payload["parser_audit"])
         self.assertIn("key_metrics", payload["lender_insights"])
         self.assertTrue(payload["memo_markdown"].startswith("#"))
+
+    def test_text_pipeline_uses_client_pdf_text_without_binary_upload(self):
+        result = run_text_pipeline(
+            filename="large-digital.pdf",
+            pages=[{"page_number": 1, "raw_text": FINANCIAL_TEXT}],
+            document_type="unknown",
+            borrower_metadata={"company_name": "Altan Trade LLC"},
+        )
+        payload = full_pipeline_payload(result)
+
+        self.assertEqual(payload["parse_result"]["parser_version"], "client-digital-text-v1")
+        self.assertEqual(payload["parse_result"]["pages"][0]["provenance"]["digital_parser"], "browser-pdfjs")
+        self.assertEqual(payload["financial_extraction"]["income_statement"]["revenue"], 1_000_000)
+        self.assertIn("client_pdf_text_mode", " ".join(payload["parse_result"]["global_warnings"]))
 
     def test_document_id_can_be_reused_for_financial_analysis(self):
         result = run_document_pipeline(

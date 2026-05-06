@@ -13,3 +13,5 @@ benchmark-output
 .tools
 .cache
 tsconfig.tsbuildinfo
+
+.vercel
